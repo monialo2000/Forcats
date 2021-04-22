@@ -32,6 +32,17 @@ levels = c("a", "b", "c"))
 f
 ```
 
+Cuando los factores estan almacenados en un tibble no es tan fácil verlos. Una forma de conseguirlo es con count():
+
+```{r ver_actores_en_tibbles}
+encuesta %>%
+  count(raza)
+# Si se quiere ver también los datos no válidos:
+encuesta %>%
+  count(raza, .drop = FALSE)
+```
+
+
 Siguiendo la cheatsheet de Forcats encontramos las siguientes funciones:
 ```{r levels}
 levels(y1) # muestra todos los niveles posibles de esa variable
@@ -139,6 +150,28 @@ ggplot(chks, aes(Time, weight, colour = fct_reorder2(Chick, Time, weight))) +
   geom_point() +
   geom_line() +
   labs(colour = "Chick")
+
+
+
+resumen_religion <- encuesta %>%
+  group_by(religion) %>%
+  summarise(
+    edad = mean(edad, na.rm = TRUE),
+    horas_tv = mean(horas_tv, na.rm = TRUE),
+    n = n()
+  )
+
+ggplot(resumen_religion, aes(horas_tv, religion)) + geom_point()
+
+# pero se puede mejorar con fct_reorder. Los parámetros que usamos: 
+#   f, el factor cuyos niveles quieres modificar.
+# x, un vector numérico que quieres usar para reordenar los niveles.
+# Opcionalmente, fun, una función que se usa si hay múltiples valores de x para cada valor de f. El valor por defecto es median (mediana).
+
+resumen_religion %>%
+  mutate(religion = fct_reorder(religion, horas_tv)) %>%
+  ggplot(aes(horas_tv, religion)) +
+  geom_point()
 }
 ```
 
@@ -176,14 +209,29 @@ fct_anon(f)
 ```
 
 ```{r fct_collapse}
-#fct_collapse(.f, ...) Colapsa niveles en grupos definidos manualmente.
+#fct_collapse(.f, ...) Colapsa niveles en grupos definidos manualmente. Para achicar # factores
 fct_collapse(f, x = c("a", "b"))
+
+encuesta %>%
+  mutate(partido = fct_collapse(partido,
+    otro = c("Sin respuesta", "No sabe", "Otro partido"),
+    republicano = c("Fuertemente republicano", "No fuertemente republicano"),
+    independiente = c("Ind, pro rep", "Independiente", "Ind, pro dem"),
+    demócrata = c("No fuertemente demócrata", "Fuertemente demócrata")
+  )) %>%
+  count(partido)
 ```
 
 ```{r fct_lump}
 #fct_lump(f, n, prop, w = NULL, other_level = "Other", ties.method = c("min", "average", "first", "last",
-#"random", "max")) # Combina niveles menos o más comunes en un único nivel. También fct_lump_min.
+#"random", "max")) # Combina niveles, en general menos comunes en un único nivel, al que se le da un nombre. Se selecciona las cantidad de niveles originales que se quieren mostrar. También fct_lump_min.
 fct_lump(f, n = 1)
+
+
+encuesta %>%
+  mutate(religion = fct_lump(religion, n = 10, other_level = "Otra")) %>%
+  count(religion, sort = TRUE) %>%
+  print(n = Inf)
 ```
 
 ```{r fct_other}
@@ -196,16 +244,40 @@ fct_other(f, keep = c("a", "b"))
 #fct_drop(f, only) #Descarga niveles no usados.
 f5 <- factor(c("a","b"),c("a","b","x"))
 f6 <- fct_drop(f5)
+
+# el parámetro only: un vector de caracteres que restringe el conj. de niveles a eliminar. 
+# Si se especifica, solo los niveles sin entradas Y que esten en este vector se eliminaran.
+
+l <- factor(c("a", "b"), levels = c("a", "b", "c"))
+l
+fct_drop(l)
+
+y1
+# Set only to restrict which levels to drop
+fct_drop(y1, only = "Nov")
+fct_drop(y1, only = c("Oct", "Nov", "Dic"))
 ```
 
 ```{r fct_expand}
 #fct_expand(f, …) # Agrega niveles a un factor. 
 fct_expand(f6, "x")
+
+h1 <- factor(sample(letters[1:3], 20, replace = TRUE))
+h1
+fct_expand(h1, "x", "y", "z")
+fct_expand(h1, letters[1:6])
 ```
 
 ```{r fct_explicit_na}
-fct_explicit_na(f, na_level="(Missing)") #Asigna un nivel a NAs para incluirlos, por ejemplo en gráficos.
+fct_explicit_na(f, na_level="NA") #Asigna un nivel a NAs para incluirlos, por ejemplo en gráficos.
 fct_explicit_na(factor(c("a", "b", NA)))
+
+n1 <- factor(c("a", "a", NA, NA, "a", "b", NA, "c", "a", "c", "b"))
+fct_count(n1)
+
+n2 <- fct_explicit_na(n1)
+fct_count(n2)
+
 ```
 
 
