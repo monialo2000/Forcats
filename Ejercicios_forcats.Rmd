@@ -1,0 +1,211 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+editor_options:
+  chunk_output_type: inline
+---
+# Factores que son
+Los factores se usan para trabajar con variables categòricas que tienen un numero determinado de valores posibles. Generalmente son códigos, cadenas. Esos códigos si se mantienen como caracteres se ordenan de manera alfabética, que posiblemente no se el orden deseado. 
+Un factor es un vector de enteros con un atributo de niveles que guarda mapeos entre enterosy valores categóricos.
+Anteriormente cuando uno leìa en base un archivo solìa dejar las variables tipo char como categoricas por default parámetro "stringsAsFactors" en read. En tidyverse eso no sucede.
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(datos)
+
+```
+
+
+```{r crear_factor}
+x1 <- c("Dic", "Abr", "Ene", "Mar")
+niveles_meses <- c("Ene", "Feb", "Mar", "Abr", "May", "Jun",
+  "Jul", "Ago", "Sep", "Oct", "Nov", "Dic")
+y1 <- factor(x1, levels = niveles_meses)
+y1
+sort(x1)
+sort(y1)
+
+f <- factor(c("a", "c", "b", "a"),
+levels = c("a", "b", "c"))
+f
+```
+
+Siguiendo la cheatsheet de Forcats encontramos las siguientes funciones:
+```{r levels}
+levels(y1) # muestra todos los niveles posibles de esa variable
+```
+## Examinar
+
+```{r fct_count}
+fct_count(y1, sort = FALSE)   #cuenta ocurrencias de cada nivel
+
+```
+```{r fct_unique}
+fct_unique(f)                 #trae una vector de valores únicos que contiene los datos del argumento, en este caso f
+```
+
+## Combinar Factores
+```{r fct_c}
+#fct_c(…) Combina factores con niveles distintos.
+g1 <- factor(c("a", "c"))
+g2 <- factor(c("b", "a"))
+fct_c(g1, g2)
+
+fa <- factor("a")
+fb <- factor("b")
+fab <- factor(c("a", "b"))
+c(fa, fb, fab)
+fct_c(fa, fb, fab)
+
+# You can also pass a list of factors with !!!
+fs <- list(fa, fb, fab)
+fct_c(!!!fs)
+```
+
+
+
+## Cambiar el orden de los niveles: 
+Se puede cambiar manualmente, arbitrariamente, teniendo en cuenta la frecuencia, el orden en que aparecen, invirtiendo el orden, etc.
+
+```{r fct_relevel}
+fct_relevel(f, c("b", "c", "a")) #Reordena niveles manualmente.
+```
+```{r fct_infreq}
+fct_infreq(f, ordered = NA) #ordena segun frecuencia
+
+f1 <- factor(c("b", "c", "a", "b", "b", "c"))
+fct_infreq(f1, ordered = NA) 
+```
+
+
+```{r fct_inorder}
+fct_inorder(f, ordered = NA) #ordena por orden de aparicion
+f2 <- factor(c("b", "a"))
+fct_inorder(f2, ordered = NA)
+```
+
+```{r fct_rev}
+fct_rev(f)   #invierte el orden de los niveles 
+fct_rev(f1)
+fct_rev(f2)
+f4 <- factor(c("b", "a", "a", "b", "c"))
+fct_rev(f4)
+```
+
+```{r fct_shift}
+fct_shift(f)   # corre niveles 1 posición  a izquierda o derecha
+fct_shift(f2)
+fct_shift(f4)
+```
+
+```{r fct_shuffle}
+fct_shuffle(f) #Permuta elorden de los niveles al azar.
+fct_shuffle(f4)
+```
+```{r fct_reorder}
+#fct_reorder(.f, .x, .fun = median, ..., .desc = FALSE) reordena los niveles siguiendo una función (ej:media, mediana, etc si no se indica es por frecuencia). 
+# Reordena los niveles según su asociación con otra variable.
+# Reordena niveles por su valor final cuando segrafican con otras dos variables
+# Reorder con un vector x, y reorder2 con 2 vectores x,y.
+# .f puede se un factor o un vector de caracteres.
+df <- tibble::tribble(
+  ~color,     ~a, ~b,
+  "blue",      1,  2,
+  "green",     6,  2,
+  "purple",    3,  3,
+  "red",       2,  3,
+  "yellow",    5,  1
+)
+df$color <- factor(df$color)
+
+fct_reorder(df$color, df$a, min)
+
+fct_reorder2(df$color, df$a, df$b)
+
+boxplot(Sepal.Width ~ fct_reorder(Species, Sepal.Width, .desc = TRUE), data = iris)
+
+chks <- subset(ChickWeight, as.integer(Chick) < 10)
+chks <- transform(chks, Chick = fct_shuffle(Chick))
+
+if (require("ggplot2")) {
+ggplot(chks, aes(Time, weight, colour = Chick)) +
+  geom_point() +
+  geom_line()
+
+# Note that lines match order in legend
+ggplot(chks, aes(Time, weight, colour = fct_reorder2(Chick, Time, weight))) +
+  geom_point() +
+  geom_line() +
+  labs(colour = "Chick")
+}
+```
+
+## Cambiar el valor de los niveles
+
+```{r fct_recode}
+#fct_recode(.f, ...) #Cambia manualmente los niveles.  
+fct_recode(f, v = "a", x = "b", z = "c")
+```
+
+```{r fct_relabel}
+
+#fct_relabel() cambia el nivel, y tiene sintaxis de purrr::map para aplicar una función o expresión a cada nivel.
+
+fct_relabel(f, ~ paste0("x", .x))
+
+convert_income <- function(x) {
+  regex <- "^(?:Lt |)[$]([0-9]+).*$"
+  is_range <- grepl(regex, x)
+  num_income <- as.numeric(gsub(regex, "\\1", x[is_range]))
+  num_income <- trunc(num_income / 5000) * 5000
+  x[is_range] <- paste0("Gt $", num_income)
+  x
+}
+
+fct_count(gss_cat$rincome)
+convert_income(levels(gss_cat$rincome))
+rincome2 <- fct_relabel(gss_cat$rincome, convert_income)
+fct_count(rincome2)
+```
+
+```{r fct_anon}
+#fct_anon() Anonimiza niveles con números enteros al azar. 
+fct_anon(f)
+```
+
+```{r fct_collapse}
+#fct_collapse(.f, ...) Colapsa niveles en grupos definidos manualmente.
+fct_collapse(f, x = c("a", "b"))
+```
+
+```{r fct_lump}
+#fct_lump(f, n, prop, w = NULL, other_level = "Other", ties.method = c("min", "average", "first", "last",
+#"random", "max")) # Combina niveles menos o más comunes en un único nivel. También fct_lump_min.
+fct_lump(f, n = 1)
+```
+
+```{r fct_other}
+#fct_other(f, keep, drop, other_level ="Other") # Reemplaza niveles con"other." 
+fct_other(f, keep = c("a", "b"))
+```
+
+## Agrega o descarta niveles
+```{r fct_drop}
+#fct_drop(f, only) #Descarga niveles no usados.
+f5 <- factor(c("a","b"),c("a","b","x"))
+f6 <- fct_drop(f5)
+```
+
+```{r fct_expand}
+#fct_expand(f, …) # Agrega niveles a un factor. 
+fct_expand(f6, "x")
+```
+
+```{r fct_explicit_na}
+fct_explicit_na(f, na_level="(Missing)") #Asigna un nivel a NAs para incluirlos, por ejemplo en gráficos.
+fct_explicit_na(factor(c("a", "b", NA)))
+```
+
+
